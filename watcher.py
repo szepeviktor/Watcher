@@ -253,12 +253,13 @@ class WatcherDaemon(Daemon):
             mask      = self._parseMask(self.config.get(section,'events').split(','))
             folder    = self.config.get(section,'watch')
             recursive = self.config.getboolean(section,'recursive')
+            autoadd   = self.config.getboolean(section,'autoadd')
             command   = self.config.get(section,'command')
 
             wm = pyinotify.WatchManager()
             handler = EventHandler(command)
 
-            wdds.append(wm.add_watch(folder, mask, rec=recursive))
+            wdds.append(wm.add_watch(folder, mask, rec=recursive,auto_add=autoadd))
             # BUT we need a new ThreadNotifier so I can specify a different
             # EventHandler instance for each job
             # this means that each job has its own thread as well (I think)
