@@ -254,12 +254,22 @@ class WatcherDaemon(Daemon):
             folder    = self.config.get(section,'watch')
             recursive = self.config.getboolean(section,'recursive')
             autoadd   = self.config.getboolean(section,'autoadd')
+            excluded  = self.config.get(section,'excluded').split(',')
             command   = self.config.get(section,'command')
 
             wm = pyinotify.WatchManager()
             handler = EventHandler(command)
 
             wdds.append(wm.add_watch(folder, mask, rec=recursive,auto_add=autoadd))
+            # Remove watch about excluded dir. Not the perfect solution as they would
+            # just have to not be added in first place...
+            if excluded[-1]:
+                for excluded_dir in excluded :
+                    for (k,v) in wdds[-1].iteritems():
+                        if k.startswith(excluded_dir):
+                            wm.rm_watch(v) 
+                    wdds[-1] = dict((k,v) for (k,v) in wdds[-1].iteritems() if not k.startswith(excluded_dir))
+                    log("Excluded dirs : " + excluded_dir)
             # BUT we need a new ThreadNotifier so I can specify a different
             # EventHandler instance for each job
             # this means that each job has its own thread as well (I think)
