@@ -182,7 +182,8 @@ class EventHandler(pyinotify.ProcessEvent):
         command = t.substitute(watched=self.shellquote(event.path),
                                filename=self.shellquote(event.pathname),
                                tflags=self.shellquote(event.maskname),
-                               nflags=self.shellquote(event.mask))
+                               nflags=self.shellquote(event.mask),
+                               cookie=self.shellquote(event.cookie if hasattr(event, "cookie") else 0))
         try:
             os.system(command)
         except OSError, err:
