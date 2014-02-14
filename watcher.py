@@ -178,6 +178,12 @@ class EventHandler(pyinotify.ProcessEvent):
         return "'" + s.replace("'", "'\\''") + "'"
 
     def runCommand(self, event):
+        # if specified, exclude extensions, or include extensions.
+        if include_extensions and all(not event.pathname.endswith(ext) for ext in self.include_extensions):
+            return
+        if exclude_extensions and any(event.pathname.endswith(ext) for ext in self.exclude_extensions):
+            return
+
         t = Template(self.command)
         command = t.substitute(watched=self.shellquote(event.path),
                                filename=self.shellquote(event.pathname),
@@ -256,10 +262,12 @@ class WatcherDaemon(Daemon):
             recursive = self.config.getboolean(section,'recursive')
             autoadd   = self.config.getboolean(section,'autoadd')
             excluded  = self.config.get(section,'excluded').split(',')
+            included_extensions = self.config.get(section,'included_extensions').split(',')
+            excluded_extensions = self.config.get(section,'excluded_extensions').split(',')
             command   = self.config.get(section,'command')
 
             wm = pyinotify.WatchManager()
-            handler = EventHandler(command)
+            handler = EventHandler(command, include_extensions, exclude_extensions)
 
             wdds.append(wm.add_watch(folder, mask, rec=recursive,auto_add=autoadd))
             # Remove watch about excluded dir. Not the perfect solution as they would
