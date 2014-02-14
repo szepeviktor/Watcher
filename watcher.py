@@ -182,8 +182,10 @@ class EventHandler(pyinotify.ProcessEvent):
     def runCommand(self, event):
         # if specified, exclude extensions, or include extensions.
         if include_extensions and all(not event.pathname.endswith(ext) for ext in self.include_extensions):
+            print "File %s excluded because its exension is not in the included extensions %r"%(event.pathname, self.include_extensions)
             return
         if exclude_extensions and any(event.pathname.endswith(ext) for ext in self.exclude_extensions):
+            print "File %s excluded because its extension is in the excluded extensions %r"%(event.pathname, self.exclude_extensions)
             return
 
         t = Template(self.command)
@@ -264,8 +266,8 @@ class WatcherDaemon(Daemon):
             recursive = self.config.getboolean(section,'recursive')
             autoadd   = self.config.getboolean(section,'autoadd')
             excluded  = self.config.get(section,'excluded').split(',')
-            include_extensions = self.config.get(section,'include_extensions').split(',')
-            exclude_extensions = self.config.get(section,'exclude_extensions').split(',')
+            include_extensions = None if '' in self.config.get(section,'include_extensions').split(',') else self.config.get(section,'include_extensions').split(',')
+            exclude_extensions = None if '' in self.config.get(section,'exclude_extensions').split(',') else self.config.get(section,'exclude_extensions').split(',')
             command   = self.config.get(section,'command')
 
             wm = pyinotify.WatchManager()
