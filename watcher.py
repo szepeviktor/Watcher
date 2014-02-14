@@ -168,9 +168,11 @@ class Daemon:
         """
 
 class EventHandler(pyinotify.ProcessEvent):
-    def __init__(self, command):
+    def __init__(self, command, include_extensions, exclude_extensions):
         pyinotify.ProcessEvent.__init__(self)
         self.command = command
+        self.include_extensions = include_extensions
+        self.exclude_extensions = exclude_extensions
 
     # from http://stackoverflow.com/questions/35817/how-to-escape-os-system-calls-in-python
     def shellquote(self,s):
