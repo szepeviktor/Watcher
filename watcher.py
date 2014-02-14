@@ -264,8 +264,8 @@ class WatcherDaemon(Daemon):
             recursive = self.config.getboolean(section,'recursive')
             autoadd   = self.config.getboolean(section,'autoadd')
             excluded  = self.config.get(section,'excluded').split(',')
-            included_extensions = self.config.get(section,'included_extensions').split(',')
-            excluded_extensions = self.config.get(section,'excluded_extensions').split(',')
+            include_extensions = self.config.get(section,'include_extensions').split(',')
+            exclude_extensions = self.config.get(section,'exclude_extensions').split(',')
             command   = self.config.get(section,'command')
 
             wm = pyinotify.WatchManager()
