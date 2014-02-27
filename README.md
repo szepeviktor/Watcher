@@ -8,14 +8,23 @@ recursively monitor directories.
 
 It's written in Python, making it easier to hack.
 
+This fork is a rewritting of the code using python-daemon implementation of [PEP3143](http://legacy.python.org/dev/peps/pep-3143/) 
+
 ## Requirements
 
-You need Python 2.7 and the [pyinotify](http://github.com/seb-m/pyinotify)
-library.
+You need Python 2.7 and the following modules that can be installed with `pip`:
 
-In Ubuntu (and Debian) you can install these with:
+*pyinotify
+*python-daemon
+*lockfile
 
-    sudo apt-get install python python-pyinotify
+To install `pip` on Ubuntu:
+
+    sudo apt-get install pip
+
+To install the modules:
+
+    sudo pip install python-daemon lockfile pyinotify
 
 ## Configuration
 
