@@ -465,9 +465,6 @@ if __name__ == "__main__":
     # Initialize the daemon
     options = init_daemon(config.defaults())
     options['files_preserve'] = [loghandler.stream]
-    signal_map = {signal.SIGTERM: cleanup_notifiers,
-                    signal.SIGHUP: 'terminate',
-                    signal.SIGUSR1: init_daemon}
     options['func_arg'] = config
     daemon = DaemonRunner(watcher, **options)
     
