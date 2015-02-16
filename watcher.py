@@ -14,6 +14,7 @@ import argparse, ConfigParser, string
 import logging, time
 import daemon, lockfile
 from lockfile import pidlockfile
+import re
 
 
 class DaemonRunnerError(Exception):
@@ -165,11 +166,13 @@ def is_pidfile_stale(pidfile):
     return result
 
 class EventHandler(pyinotify.ProcessEvent):
-    def __init__(self, command, include_extensions, exclude_extensions):
+    def __init__(self, command, include_extensions, exclude_extensions, exclude_re):
         pyinotify.ProcessEvent.__init__(self)
         self.command = command
         self.include_extensions = include_extensions
         self.exclude_extensions = exclude_extensions
+        self.exclude_re_txt = exclude_re
+        self.exclude_re = None if not exclude_re else re.compile(exclude_re)
         
     # from http://stackoverflow.com/questions/35817/how-to-escape-os-system-calls-in-python
     def shellquote(self,s):
@@ -185,6 +188,9 @@ class EventHandler(pyinotify.ProcessEvent):
         if self.exclude_extensions and any(event.pathname.endswith(ext) for ext in self.exclude_extensions):
             #print "File %s excluded because its extension is in the excluded extensions %r"%(event.pathname, self.exclude_extensions)
             logger.debug("File %s excluded because its extension is in the excluded extensions %r"%(event.pathname, self.exclude_extensions))
+            return
+        if self.exclude_re and self.exclude_re.search(os.path.basename(event.pathname)):
+            logger.debug("File %s excluded because its name matched exclude regexp '%s'"%(event.pathname, self.exclude_re_txt))
             return
 
         t = string.Template(self.command)
@@ -273,12 +279,13 @@ def watcher(config):
         excluded  = None if '' in config.get(section,'excluded').split(',') else set(config.get(section,'excluded').split(','))
         include_extensions = None if '' in config.get(section,'include_extensions').split(',') else set(config.get(section,'include_extensions').split(','))
         exclude_extensions = None if '' in config.get(section,'exclude_extensions').split(',') else set(config.get(section,'exclude_extensions').split(','))
+        exclude_re = None if not config.get(section,'exclude_re') else config.get(section,'exclude_re')
         command   = config.get(section,'command')
 
         logger.info(section + ": " + folder)
 
         wm = pyinotify.WatchManager()
-        handler = EventHandler(command, include_extensions, exclude_extensions)
+        handler = EventHandler(command, include_extensions, exclude_extensions, exclude_re)
 
         wdds[section] = wm.add_watch(folder, mask, rec=recursive,auto_add=autoadd)
         # Remove watch about excluded dir. 
