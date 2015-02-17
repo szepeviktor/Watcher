@@ -14,8 +14,9 @@ import argparse, ConfigParser, string
 import logging, time
 import daemon, lockfile
 from lockfile import pidlockfile
-import subprocess
 import re
+import subprocess
+import shlex
 
 
 class DaemonRunnerError(Exception):
@@ -211,8 +212,9 @@ class EventHandler(pyinotify.ProcessEvent):
                 logger.info("Run command log: %s" % (command))
             else:
                 logger.info("Executing child: \"%s\""%command)
+                args = shlex.split(command)
                 # async exec
-                subprocess.Popen(command, shell = True, stdout=self.outfile, stderr=self.outfile)
+                subprocess.Popen(args, stdout=self.outfile, stderr=self.outfile)
         except OSError, err:
             #print "Failed to run command '%s' %s" % (command, str(err))
             logger.info("Failed to run command '%s' %s" % (command, str(err)))
