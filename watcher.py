@@ -296,7 +296,10 @@ def watcher(config):
         exclude_re = None if not config.get(section,'exclude_re') else config.get(section,'exclude_re')
         command   = config.get(section,'command')
         background= config.getboolean(section,'background')
+
         outfile = config.get(section, 'outfile')
+        t = string.Template(outfile)
+        outfile = t.substitute(job=section)
         outfile_h = open(outfile, 'a+b', buffering=0) if outfile else None
         logger.debug("outfile = '%s'"%outfile)
 
