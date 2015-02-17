@@ -321,10 +321,10 @@ def watcher(config):
         notifiers[section] = pyinotify.ThreadedNotifier(wm, handler)
 
     # Start all the notifiers.
-    for notifier in notifiers.values():
+    for (name,notifier) in notifiers.iteritems():
         try:
             notifier.start()
-            logger.debug('Notifier for %s is instanciated'%(section))
+            logger.debug('Notifier for %s is instanciated'%(name))
         except pyinotify.NotifierError as err:
             logger.warning( '%r %r'%(sys.stderr, err))
     
