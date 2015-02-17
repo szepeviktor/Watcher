@@ -169,8 +169,9 @@ def is_pidfile_stale(pidfile):
     return result
 
 class EventHandler(pyinotify.ProcessEvent):
-    def __init__(self, command, include_extensions, exclude_extensions, exclude_re, background, outfile):
+    def __init__(self, job, command, include_extensions, exclude_extensions, exclude_re, background, outfile):
         pyinotify.ProcessEvent.__init__(self)
+        self.job = job
         self.command = command
         self.include_extensions = include_extensions
         self.exclude_extensions = exclude_extensions
@@ -199,7 +200,8 @@ class EventHandler(pyinotify.ProcessEvent):
             return
 
         t = string.Template(self.command)
-        command = t.substitute(watched=self.shellquote(event.path),
+        command = t.substitute(job=self.shellquote(self.job),
+                               watched=self.shellquote(event.path),
                                filename=self.shellquote(event.pathname),
                                tflags=self.shellquote(event.maskname),
                                nflags=self.shellquote(event.mask),
@@ -301,7 +303,7 @@ def watcher(config):
         logger.info(section + ": " + folder)
 
         wm = pyinotify.WatchManager()
-        handler = EventHandler(command, include_extensions, exclude_extensions, exclude_re, background, outfile_h)
+        handler = EventHandler(section, command, include_extensions, exclude_extensions, exclude_re, background, outfile_h)
 
         wdds[section] = wm.add_watch(folder, mask, rec=recursive,auto_add=autoadd)
         # Remove watch about excluded dir. 
