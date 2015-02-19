@@ -18,7 +18,7 @@ import re
 import subprocess
 import shlex
 
-
+
 class DaemonRunnerError(Exception):
     """ Abstract base class for errors from DaemonRunner. """
 
@@ -31,7 +31,7 @@ class DaemonRunnerStartFailureError(RuntimeError, DaemonRunnerError):
 class DaemonRunnerStopFailureError(RuntimeError, DaemonRunnerError):
     """ Raised when failure stopping DaemonRunner. """
 
-
+
 class DaemonRunner(object):
     """ Controller for a callable running in a separate background process.
 
@@ -321,7 +321,7 @@ def watcher(config):
         notifiers[section] = pyinotify.ThreadedNotifier(wm, handler)
 
     # Start all the notifiers.
-    for (name,notifier) in notifiers.iteritems():
+    for (name, notifier) in notifiers.items():
         try:
             notifier.start()
             logger.debug('Notifier for %s is instanciated'%(name))
