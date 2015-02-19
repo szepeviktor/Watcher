@@ -14,19 +14,9 @@ import argparse, ConfigParser, string
 import logging, time
 import daemon, lockfile
 from lockfile import pidlockfile
-
-#third party libs
-#: Video extensions
-try:
-    from subliminal import VIDEO_EXTENSIONS
-except ImportError:
-    VIDEO_EXTENSIONS = ('.3g2', '.3gp', '.3gp2', '.3gpp', '.60d', '.ajp', '.asf', '.asx', '.avchd', '.avi', '.bik',
-                        '.bix', '.box', '.cam', '.dat', '.divx', '.dmf', '.dv', '.dvr-ms', '.evo', '.flc', '.fli',
-                        '.flic', '.flv', '.flx', '.gvi', '.gvp', '.h264', '.m1v', '.m2p', '.m2ts', '.m2v', '.m4e',
-                        '.m4v', '.mjp', '.mjpeg', '.mjpg', '.mkv', '.moov', '.mov', '.movhd', '.movie', '.movx', '.mp4',
-                        '.mpe', '.mpeg', '.mpg', '.mpv', '.mpv2', '.mxf', '.nsv', '.nut', '.ogg', '.ogm', '.omf', '.ps',
-                        '.qt', '.ram', '.rm', '.rmvb', '.swf', '.ts', '.vfw', '.vid', '.video', '.viv', '.vivo', '.vob',
-                        '.vro', '.wm', '.wmv', '.wmx', '.wrap', '.wvx', '.wx', '.x264', '.xvid')
+import re
+import subprocess
+import shlex
 
 
 class DaemonRunnerError(Exception):
@@ -73,6 +63,7 @@ class DaemonRunner(object):
         if signal_map is not None:
             self.daemon_context.signal_map = signal_map
         self.daemon_context.files_preserve = files_preserve
+        signal.signal(signal.SIGCLD, signal.SIG_IGN)
 
     def restart(self):
         """ Stop, then start.
@@ -178,11 +169,16 @@ def is_pidfile_stale(pidfile):
     return result
 
 class EventHandler(pyinotify.ProcessEvent):
-    def __init__(self, command, include_extensions, exclude_extensions):
+    def __init__(self, job, command, include_extensions, exclude_extensions, exclude_re, background, outfile):
         pyinotify.ProcessEvent.__init__(self)
+        self.job = job
         self.command = command
         self.include_extensions = include_extensions
         self.exclude_extensions = exclude_extensions
+        self.exclude_re_txt = exclude_re
+        self.exclude_re = None if not exclude_re else re.compile(exclude_re)
+        self.background = background
+        self.outfile = outfile
         
     # from http://stackoverflow.com/questions/35817/how-to-escape-os-system-calls-in-python
     def shellquote(self,s):
@@ -199,17 +195,28 @@ class EventHandler(pyinotify.ProcessEvent):
             #print "File %s excluded because its extension is in the excluded extensions %r"%(event.pathname, self.exclude_extensions)
             logger.debug("File %s excluded because its extension is in the excluded extensions %r"%(event.pathname, self.exclude_extensions))
             return
+        if self.exclude_re and self.exclude_re.search(os.path.basename(event.pathname)):
+            logger.debug("File %s excluded because its name matched exclude regexp '%s'"%(event.pathname, self.exclude_re_txt))
+            return
 
         t = string.Template(self.command)
-        command = t.substitute(watched=self.shellquote(event.path),
+        command = t.substitute(job=self.shellquote(self.job),
+                               watched=self.shellquote(event.path),
                                filename=self.shellquote(event.pathname),
                                tflags=self.shellquote(event.maskname),
                                nflags=self.shellquote(event.mask),
                                cookie=self.shellquote(event.cookie if hasattr(event, "cookie") else 0))
         try:
-            os.system(command)
-            #print "Run command print: %s" % (command)
-            logger.info("Run command log: %s" % (command))
+            if not self.background:
+                # sync exec
+                os.system(command)
+                #print "Run command print: %s" % (command)
+                logger.info("Run command log: %s" % (command))
+            else:
+                logger.info("Executing child: \"%s\""%command)
+                args = shlex.split(command)
+                # async exec
+                subprocess.Popen(args, stdout=self.outfile, stderr=self.outfile)
         except OSError, err:
             #print "Failed to run command '%s' %s" % (command, str(err))
             logger.info("Failed to run command '%s' %s" % (command, str(err)))
@@ -286,35 +293,38 @@ def watcher(config):
         excluded  = None if '' in config.get(section,'excluded').split(',') else set(config.get(section,'excluded').split(','))
         include_extensions = None if '' in config.get(section,'include_extensions').split(',') else set(config.get(section,'include_extensions').split(','))
         exclude_extensions = None if '' in config.get(section,'exclude_extensions').split(',') else set(config.get(section,'exclude_extensions').split(','))
+        exclude_re = None if not config.get(section,'exclude_re') else config.get(section,'exclude_re')
         command   = config.get(section,'command')
+        background= config.getboolean(section,'background')
+
+        outfile = config.get(section, 'outfile')
+        t = string.Template(outfile)
+        outfile = t.substitute(job=section)
+        outfile_h = open(outfile, 'a+b', buffering=0) if outfile else None
+        logger.debug("outfile = '%s'"%outfile)
 
         logger.info(section + ": " + folder)
 
-        # parse include_extensions
-        if include_extensions and 'video' in include_extensions:
-            include_extensions.discard('video')
-            include_extensions |= set(VIDEO_EXTENSIONS)
-      
         wm = pyinotify.WatchManager()
-        handler = EventHandler(command, include_extensions, exclude_extensions)
+        handler = EventHandler(section, command, include_extensions, exclude_extensions, exclude_re, background, outfile_h)
 
         wdds[section] = wm.add_watch(folder, mask, rec=recursive,auto_add=autoadd)
         # Remove watch about excluded dir. 
         if excluded:
             for excluded_dir in excluded :
-                for (k,v) in wdds[section].iteritems():
+                for (k,v) in wdds[section].items():
                     if k.startswith(excluded_dir):
                         wm.rm_watch(v)
-                        wdds[section].pop(v) 
+                        wdds[section].pop(k)
                 logger.debug("Excluded dirs : " + excluded_dir)
         # Create ThreadNotifier so that each job has its own thread
         notifiers[section] = pyinotify.ThreadedNotifier(wm, handler)
 
     # Start all the notifiers.
-    for notifier in notifiers.values():
+    for (name,notifier) in notifiers.iteritems():
         try:
             notifier.start()
-            logger.debug('Notifier for %s is instanciated'%(section))
+            logger.debug('Notifier for %s is instanciated'%(name))
         except pyinotify.NotifierError as err:
             logger.warning( '%r %r'%(sys.stderr, err))
     
@@ -324,6 +334,9 @@ def watcher(config):
             time.sleep(0.1)
     except:
         cleanup_notifiers(notifiers)
+    if outfile:
+        outfile_h.close()
+        logger.debug("closed %s"%outfile)
     
 def cleanup_notifiers(notifiers):
     """Close notifiers instances when the process is killed
