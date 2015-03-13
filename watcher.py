@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+from __future__ import print_function, division, unicode_literals, absolute_import
 
 ##/usr/bin/env python
 ##
@@ -10,26 +11,26 @@
 import sys, os, grp
 import datetime, signal, errno
 import pyinotify
-import argparse, ConfigParser, string
+import argparse, string
 import logging, time
 import daemon, lockfile
-from lockfile import pidlockfile
 import re
 import subprocess
 import shlex
 
-#third party libs
-#: Video extensions
 try:
-    from subliminal import VIDEO_EXTENSIONS
-except ImportError:
-    VIDEO_EXTENSIONS = ('.3g2', '.3gp', '.3gp2', '.3gpp', '.60d', '.ajp', '.asf', '.asx', '.avchd', '.avi', '.bik',
-                        '.bix', '.box', '.cam', '.dat', '.divx', '.dmf', '.dv', '.dvr-ms', '.evo', '.flc', '.fli',
-                        '.flic', '.flv', '.flx', '.gvi', '.gvp', '.h264', '.m1v', '.m2p', '.m2ts', '.m2v', '.m4e',
-                        '.m4v', '.mjp', '.mjpeg', '.mjpg', '.mkv', '.moov', '.mov', '.movhd', '.movie', '.movx', '.mp4',
-                        '.mpe', '.mpeg', '.mpg', '.mpv', '.mpv2', '.mxf', '.nsv', '.nut', '.ogg', '.ogm', '.omf', '.ps',
-                        '.qt', '.ram', '.rm', '.rmvb', '.swf', '.ts', '.vfw', '.vid', '.video', '.viv', '.vivo', '.vob',
-                        '.vro', '.wm', '.wmv', '.wmx', '.wrap', '.wvx', '.wx', '.x264', '.xvid')
+    import configparser
+except ImportError:  # python 2 and sonfigparser from pip not installed
+    import ConfigParser as configparser
+
+# Video extensions
+VIDEO_EXTENSIONS = ('.3g2', '.3gp', '.3gp2', '.3gpp', '.60d', '.ajp', '.asf', '.asx', '.avchd', '.avi', '.bik',
+                    '.bix', '.box', '.cam', '.dat', '.divx', '.dmf', '.dv', '.dvr-ms', '.evo', '.flc', '.fli',
+                    '.flic', '.flv', '.flx', '.gvi', '.gvp', '.h264', '.m1v', '.m2p', '.m2ts', '.m2v', '.m4e',
+                    '.m4v', '.mjp', '.mjpeg', '.mjpg', '.mkv', '.moov', '.mov', '.movhd', '.movie', '.movx', '.mp4',
+                    '.mpe', '.mpeg', '.mpg', '.mpv', '.mpv2', '.mxf', '.nsv', '.nut', '.ogg', '.ogm', '.omf', '.ps',
+                    '.qt', '.ram', '.rm', '.rmvb', '.swf', '.ts', '.vfw', '.vid', '.video', '.viv', '.vivo', '.vob',
+                    '.vro', '.wm', '.wmv', '.wmx', '.wrap', '.wvx', '.wx', '.x264', '.xvid')
 
 class DaemonRunnerError(Exception):
     """ Abstract base class for errors from DaemonRunner. """
@@ -102,7 +103,7 @@ class DaemonRunner(object):
             
         try:
             self.daemon_context.open()
-        except pidlockfile.AlreadyLocked:
+        except lockfile.pidlockfile.AlreadyLocked:
             pidfile_path = self.pidfile.path
             logger.info("PID file %(pidfile_path)r already locked" % vars())
             return
@@ -156,7 +157,7 @@ def make_pidlockfile(path):
     if not os.path.isabs(path):
         error = ValueError("Not an absolute path: %(path)r" % vars())
         raise error
-    return pidlockfile.PIDLockFile(path)
+    return lockfile.pidlockfile.PIDLockFile(path)
 
 def is_pidfile_stale(pidfile):
     """ Determine whether a PID file is stale.
@@ -193,7 +194,7 @@ class EventHandler(pyinotify.ProcessEvent):
         self.outfile = outfile
         
     # from http://stackoverflow.com/questions/35817/how-to-escape-os-system-calls-in-python
-    def shellquote(self,s):
+    def shellquote(self, s):
         s = str(s)
         return "'" + s.replace("'", "'\\''") + "'"
 
@@ -467,7 +468,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Parse the config file
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
     if args.config:
         # load config file specified by commandline
         confok = config.read(args.config)
@@ -513,6 +514,6 @@ if __name__ == "__main__":
         daemon.run()
         #logger.info('Debug mode')
     else:
-        print "Unkown Command"
+        print("Unkown Command")
         sys.exit(2)
     sys.exit(0)
