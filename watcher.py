@@ -174,7 +174,7 @@ def is_pidfile_stale(pidfile):
     if pidfile_pid is not None:
         try:
             os.kill(pidfile_pid, signal.SIG_DFL)
-        except OSError, exc:
+        except OSError as exc:
             if exc.errno == errno.ESRCH:
                 # The specified PID does not exist
                 result = True
@@ -230,7 +230,7 @@ class EventHandler(pyinotify.ProcessEvent):
                 args = shlex.split(command)
                 # async exec
                 subprocess.Popen(args, stdout=self.outfile, stderr=self.outfile)
-        except OSError, err:
+        except OSError as err:
             #print "Failed to run command '%s' %s" % (command, str(err))
             logger.info("Failed to run command '%s' %s" % (command, str(err)))
 
