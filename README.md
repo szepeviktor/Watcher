@@ -15,7 +15,7 @@ This fork is a rewritting of the code using python-daemon implementation of [PEP
 You need Python 2.7 and the following modules that can be installed with `pip`:
 
 *pyinotify
-*python-daemon[*]
+*python-daemon
 *lockfile
 
 To install `pip` on Ubuntu:
