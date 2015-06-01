@@ -514,6 +514,6 @@ if __name__ == "__main__":
         daemon.run()
         #logger.info('Debug mode')
     else:
-        print("Unkown Command")
+        print("Unknown Command")
         sys.exit(2)
     sys.exit(0)
