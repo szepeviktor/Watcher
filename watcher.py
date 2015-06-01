@@ -22,7 +22,11 @@ try:
     import configparser
 except ImportError:  # python 2 and configparser from pip not installed
     import ConfigParser as configparser
-
+try:
+    basestring
+except NameError:  # python 3 compatibility
+    basestring = str
+  
 # Video extensions
 VIDEO_EXTENSIONS = ('.3g2', '.3gp', '.3gp2', '.3gpp', '.60d', '.ajp', '.asf', '.asx', '.avchd', '.avi', '.bik',
                     '.bix', '.box', '.cam', '.dat', '.divx', '.dmf', '.dv', '.dvr-ms', '.evo', '.flc', '.fli',
