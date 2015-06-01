@@ -20,7 +20,7 @@ import shlex
 
 try:
     import configparser
-except ImportError:  # python 2 and sonfigparser from pip not installed
+except ImportError:  # python 2 and configparser from pip not installed
     import ConfigParser as configparser
 
 # Video extensions
