@@ -13,7 +13,7 @@ import datetime, signal, errno
 import pyinotify
 import argparse, string
 import logging, time
-import daemon, lockfile
+import daemon, lockfile.pidlockfile
 import re
 import subprocess
 import shlex
@@ -26,7 +26,7 @@ try:
     basestring
 except NameError:  # python 3 compatibility
     basestring = str
-  
+
 # Video extensions
 VIDEO_EXTENSIONS = ('.3g2', '.3gp', '.3gp2', '.3gpp', '.60d', '.ajp', '.asf', '.asx', '.avchd', '.avi', '.bik',
                     '.bix', '.box', '.cam', '.dat', '.divx', '.dmf', '.dv', '.dvr-ms', '.evo', '.flc', '.fli',
@@ -68,9 +68,9 @@ class DaemonRunner(object):
         self.daemon_context = daemon.DaemonContext(umask=umask or 0,
                             working_directory=working_directory or '/',
                             uid=uid, gid=gid)
-        self.daemon_context.stdin  = open(stdin or '/dev/null', 'r')
-        self.daemon_context.stdout = open(stdout or '/dev/null', 'w+')
-        self.daemon_context.stderr = open(stderr or '/dev/null', 'w+', buffering=0)
+        self.daemon_context.stdin  = open(stdin or '/dev/null', 'rb')
+        self.daemon_context.stdout = open(stdout or '/dev/null', 'w+b')
+        self.daemon_context.stderr = open(stderr or '/dev/null', 'w+b', buffering=0)
 
         self.pidfile = None
         if pidfile is not None:
@@ -87,7 +87,7 @@ class DaemonRunner(object):
             """
         self.stop()
         self.start()
-        
+
     def run(self):
         """ Run the application.
             """
@@ -96,7 +96,7 @@ class DaemonRunner(object):
     def start(self):
         """ Open the daemon context and run the application.
             """
-        status = is_pidfile_stale(self.pidfile)    
+        status = is_pidfile_stale(self.pidfile)
         if status == True:
             self.pidfile.break_lock()
         elif status == False:
@@ -104,7 +104,7 @@ class DaemonRunner(object):
             pid = self.pidfile.read_pid()
             logger.info("Daemon already running with PID %(pid)r" % vars())
             return
-            
+
         try:
             self.daemon_context.open()
         except lockfile.pidlockfile.AlreadyLocked:
@@ -152,7 +152,7 @@ class DaemonRunner(object):
 
         raise DaemonRunnerStopFailureError(
             "Failed to terminate %(pid)d" % vars())
-        
+
 def make_pidlockfile(path):
     """ Make a PIDLockFile instance with the given filesystem path. """
     if not isinstance(path, basestring):
@@ -331,7 +331,7 @@ def watcher(config):
         handler = EventHandler(section, command, include_extensions, exclude_extensions, exclude_re, background, outfile_h)
 
         wdds[section] = wm.add_watch(folder, mask, rec=recursive,auto_add=autoadd)
-        # Remove watch about excluded dir. 
+        # Remove watch about excluded dir.
         if excluded:
             for excluded_dir in excluded :
                 for (k,v) in wdds[section].items():
@@ -426,7 +426,7 @@ def init_daemon(cf):
             uid = int(uid)
         except ValueError as e:
             if uid != '':
-                logger.warning('Incorrect uid value: %r' %(e))    
+                logger.warning('Incorrect uid value: %r' %(e))
             uid = None
     # gid
     gid = cf.get('gid', None)
@@ -435,7 +435,7 @@ def init_daemon(cf):
             gid = int(gid)
         except ValueError as e:
             if gid != '':
-                logger.warning('Incorrect gid value: %r' %(e))    
+                logger.warning('Incorrect gid value: %r' %(e))
             gid = None
 
     umask = cf.get('umask', None)
@@ -444,13 +444,13 @@ def init_daemon(cf):
             umask = int(umask)
         except ValueError as e:
             if umask != '':
-                logger.warning('Incorrect umask value: %r' %(e))    
+                logger.warning('Incorrect umask value: %r' %(e))
             umask = None
 
     wd = cf.get('working_directory', None)
     if wd is not None and not os.path.isdir(wd):
         if wd != '':
-            logger.warning('Working directory not a valid directory ("%s"). Set to default ("/")' %(wd))    
+            logger.warning('Working directory not a valid directory ("%s"). Set to default ("/")' %(wd))
         wd = None
 
     return {'pidfile':pidfile, 'stdin':None, 'stdout':None, 'stderr':None, 'uid':uid, 'gid':gid, 'umask':umask, 'working_directory':wd}
@@ -490,7 +490,7 @@ if __name__ == "__main__":
     if args.command == 'debug':
         loghandler = logging.StreamHandler()
         logger.setLevel(logging.DEBUG)
-    else: 
+    else:
         loghandler = logging.FileHandler(config.get('DEFAULT','logfile'))
     if args.verbose:
         logger.setLevel(logging.DEBUG)
@@ -502,7 +502,7 @@ if __name__ == "__main__":
     options['files_preserve'] = [loghandler.stream]
     options['func_arg'] = config
     daemon = DaemonRunner(watcher, **options)
-    
+
     # Execute the command
     if 'start' == args.command:
         daemon.start()
